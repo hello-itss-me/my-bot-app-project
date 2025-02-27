@@ -35,12 +35,16 @@ exports.handler = async function(event, context) {
     }
 
     const responseData = await response.json(); // Try to parse response as JSON
-    console.log('n8n webhook response data:', responseData); // Log n8n response data
+    console.log('n8n webhook response data (parsed JSON):', responseData); // Log n8n response data as JSON
+    console.log('n8n webhook response data (stringified):', JSON.stringify(responseData)); // Log stringified JSON
 
+    const responseBodyString = JSON.stringify(responseData); // Stringify for body
+
+    console.log('Netlify Function response body being sent:', responseBodyString); // Log the body being sent
 
     return {
       statusCode: 200,
-      body: JSON.stringify(responseData), // Forward n8n response
+      body: responseBodyString, // Forward n8n response as string
     };
   } catch (error) {
     console.error('Netlify Function error:', error);
