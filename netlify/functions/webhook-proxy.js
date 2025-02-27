@@ -1,7 +1,8 @@
-const fetch = require('node-fetch'); //  Используем node-fetch для запросов
-
 exports.handler = async function(event, context) {
   try {
+    const fetchModule = await import('node-fetch'); // Используем dynamic import
+    const fetch = fetchModule.default; // node-fetch возвращает default export
+
     const webhookUrl = process.env.N8N_WEBHOOK_URL; // URL вебхука из переменных окружения Netlify
 
     if (!webhookUrl) {
