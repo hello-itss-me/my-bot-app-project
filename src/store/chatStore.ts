@@ -300,26 +300,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
             const responseData = await response.json();
             console.log('Netlify Function response:', responseData);
 
-            // ... (остальная часть кода обработки ответа, если необходимо)
+            // Вместо симуляции ответа агента, используем ответ от вебхука
+            // setTimeout больше не нужен, ответ должен быть обработан сразу после получения
+            // Add agent response to the database
+            const agentMessage = {
+              chat_id: currentChat.id,
+              user_id: null,
+              sender_type: 'agent' as const,
+              // Use the actual response content from n8n, assuming it's in responseData.response
+              content: responseData.response || 'Error: No response from agent', // Fallback in case response is missing
+            };
 
-            // Симуляция ответа агента (убрать в production, когда вебхук будет работать)
-            setTimeout(async () => {
-              // Add agent response to the database
-              const agentMessage = {
-                chat_id: currentChat.id,
-                user_id: null,
-                sender_type: 'agent' as const,
-                content: `This is a simulated response. In a real implementation, your n8n webhook at ${agent.webhook_url} would be called by a server-side component to avoid CORS issues. The webhook would receive: ${JSON.stringify(functionPayload.payload)}`,
-              };
+            await supabase
+              .from('messages')
+              .insert(agentMessage);
 
-              await supabase
-                .from('messages')
-                .insert(agentMessage);
+            // Refresh messages
+            await get().fetchMessages(currentChat.id);
+            set({ isTyping: false });
 
-              // Refresh messages
-              await get().fetchMessages(currentChat.id);
-              set({ isTyping: false });
-            }, 2000);
 
           } catch (webhookError) {
             console.error('Webhook error:', webhookError);
