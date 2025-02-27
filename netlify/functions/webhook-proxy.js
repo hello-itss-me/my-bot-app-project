@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 exports.handler = async function(event, context) {
   try {
     const requestBody = JSON.parse(event.body);
@@ -14,6 +12,10 @@ exports.handler = async function(event, context) {
         body: JSON.stringify({ error: 'Missing webhook URL or payload' }),
       };
     }
+
+    // Динамический импорт fetch
+    const fetchModule = await import('node-fetch');
+    const fetch = fetchModule.default;
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
