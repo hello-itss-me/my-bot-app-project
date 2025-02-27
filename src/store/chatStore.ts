@@ -261,67 +261,55 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       // If there's an agent assigned to this chat, send the message to the webhook
       if (currentChat.agent_id) {
-        console.log('currentChat.agent_id:', currentChat.agent_id);
         const agent = get().agents.find(a => a.id === currentChat.agent_id);
-        console.log('agent:', agent);
         if (agent && agent.webhook_url) {
-          console.log('agent.webhook_url:', agent.webhook_url);
           set({ isTyping: true });
 
           try {
-            console.log('sendMessageToAgent should be called');
-            console.log('Sending message to agent webhook:', agent.webhook_url);
-
-            // Prepare payload with all required fields
-            const payload = {
-              message: content,
-              chat_id: currentChat.id,
-              user_id: user.id,
-              session_id: currentChat.id, // Using chat_id as session_id for tracking
-              timestamp: new Date().toISOString(),
-              sender: {
-                id: user.id,
-                email: user.email
+            // Подготовка payload для Netlify Function
+            const functionPayload = {
+              webhook_url: agent.webhook_url, // URL вебхука n8n
+              payload: { // Payload, который будет отправлен на вебхук
+                message: content,
+                chat_id: currentChat.id,
+                user_id: user.id,
+                session_id: currentChat.id,
+                timestamp: new Date().toISOString(),
+                sender: {
+                  id: user.id,
+                  email: user.email
+                }
               }
             };
 
-            console.log('Webhook payload:', JSON.stringify(payload));
+            // Вызов Netlify Function вместо прямого вебхука
+            const response = await fetch('/.netlify/functions/webhook-proxy', { // Путь к Netlify Function
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(functionPayload),
+            });
 
-            // Use Supabase Functions as a proxy to avoid CORS issues
-            // Store the message in Supabase and let the agent know it's available
-            const { data: messageData, error: messageError } = await supabase
-              .from('messages')
-              .insert({
-                chat_id: currentChat.id,
-                user_id: user.id,
-                sender_type: 'user',
-                content: JSON.stringify({
-                  message: content,
-                  metadata: {
-                    webhook_url: agent.webhook_url,
-                    requires_response: true
-                  }
-                })
-              })
-              .select()
-              .single();
-
-            if (messageError) {
-              throw new Error(`Failed to save message: ${messageError.message}`);
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('Netlify Function error:', response.status, errorText);
+              throw new Error(`Netlify Function failed: ${response.status} ${errorText}`);
             }
 
-            // Simulate a response since we can't directly call the webhook due to CORS
-            // In a real implementation, you would have a server-side component that handles this
-            console.log('Message saved, waiting for agent response...');
+            const responseData = await response.json();
+            console.log('Netlify Function response:', responseData);
 
-            // Add a simulated agent response after a delay
+            // ... (остальная часть кода обработки ответа, если необходимо)
+
+            // Симуляция ответа агента (убрать в production, когда вебхук будет работать)
             setTimeout(async () => {
               // Add agent response to the database
               const agentMessage = {
                 chat_id: currentChat.id,
                 user_id: null,
                 sender_type: 'agent' as const,
-                content: `This is a simulated response. In a real implementation, your n8n webhook at ${agent.webhook_url} would be called by a server-side component to avoid CORS issues. The webhook would receive: ${JSON.stringify(payload)}`,
+                content: `This is a simulated response. In a real implementation, your n8n webhook at ${agent.webhook_url} would be called by a server-side component to avoid CORS issues. The webhook would receive: ${JSON.stringify(functionPayload.payload)}`,
               };
 
               await supabase
