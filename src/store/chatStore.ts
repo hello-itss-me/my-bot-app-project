@@ -300,26 +300,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
             const responseData = await response.json();
             console.log('Netlify Function response:', responseData);
 
-            // ... (остальная часть кода обработки ответа, если необходимо)
+            // Add agent response to the database
+            const agentMessage = {
+              chat_id: currentChat.id,
+              user_id: null,
+              sender_type: 'agent' as const,
+              content: responseData?.output || 'No response from agent', // Use actual response here
+            };
 
-            // Симуляция ответа агента (убрать в production, когда вебхук будет работать)
-            setTimeout(async () => {
-              // Add agent response to the database
-              const agentMessage = {
-                chat_id: currentChat.id,
-                user_id: null,
-                sender_type: 'agent' as const,
-                content: `This is a simulated response. In a real implementation, your n8n webhook at ${agent.webhook_url} would be called by a server-side component to avoid CORS issues. The webhook would receive: ${JSON.stringify(functionPayload.payload)}`,
-              };
+            await supabase
+              .from('messages')
+              .insert(agentMessage);
 
-              await supabase
-                .from('messages')
-                .insert(agentMessage);
+            // Refresh messages
+            await get().fetchMessages(currentChat.id);
+            set({ isTyping: false });
 
-              // Refresh messages
-              await get().fetchMessages(currentChat.id);
-              set({ isTyping: false });
-            }, 2000);
 
           } catch (webhookError) {
             console.error('Webhook error:', webhookError);
