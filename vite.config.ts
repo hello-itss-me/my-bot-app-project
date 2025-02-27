@@ -7,4 +7,11 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-});
+  server: {
+    proxy: {
+      '/supabase': {
+        target: 'https://qtwsepbjoyyosrbaaeme.supabase.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/supabase/, ''),
+      },
+    }
