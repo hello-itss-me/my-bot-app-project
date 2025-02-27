@@ -1,25 +1,25 @@
 exports.handler = async function(event, context) {
   try {
-    const fetchModule = await import('node-fetch'); // Используем dynamic import
-    const fetch = fetchModule.default; // node-fetch возвращает default export
+    const fetchModule = await import('node-fetch');
+    const fetch = fetchModule.default;
 
-    const webhookUrl = process.env.N8N_WEBHOOK_URL; // URL вебхука из переменных окружения Netlify
+    // URL вебхука теперь берется из payload запроса
+    const payload = JSON.parse(event.body);
+    const webhookUrl = payload.webhook_url;
 
     if (!webhookUrl) {
       return {
-        statusCode: 500,
-        body: "N8N_WEBHOOK_URL is not defined in Netlify environment variables."
+        statusCode: 400,
+        body: "Webhook URL is missing in the request payload."
       };
     }
-
-    const payload = JSON.parse(event.body); // Получаем payload из тела запроса
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload) // Пересылаем payload на n8n
+      body: JSON.stringify(payload.payload) // Пересылаем основной payload на n8n
     });
 
     if (!response.ok) {
@@ -31,11 +31,11 @@ exports.handler = async function(event, context) {
       };
     }
 
-    const responseData = await response.json(); // Парсим JSON ответ от n8n
+    const responseData = await response.json();
 
     return {
       statusCode: 200,
-      body: JSON.stringify(responseData) // Возвращаем JSON ответ от n8n
+      body: JSON.stringify(responseData)
     };
 
   } catch (error) {
