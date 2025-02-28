@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
-import { AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import { Trash2, Edit, PlusCircle } from 'lucide-react';
+
+interface Agent {
+  id: string;
+  created_at: string;
+  name: string;
+  webhook_url: string;
+  user_id: string;
+}
 
 export function SettingsPage() {
-  const { user, signOut } = useAuthStore();
-  const [agents, setAgents] = useState<any[]>([]);
+  const { session } = useAuthStore();
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [newAgentName, setNewAgentName] = useState('');
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
@@ -13,221 +21,190 @@ export function SettingsPage() {
   const [editedWebhookUrl, setEditedWebhookUrl] = useState('');
 
   useEffect(() => {
-    if (user) {
-      fetchAgents();
+    if (session?.user?.id) {
+      fetchAgents(session.user.id);
     }
-  }, [user]);
+  }, [session]);
 
-  const fetchAgents = async () => {
-    if (!user) return;
+  const fetchAgents = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('agents')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
+
       if (error) {
         console.error('Error fetching agents:', error);
       } else {
         setAgents(data || []);
       }
     } catch (error) {
-        console.error('Error fetching agents:', error);
+      console.error('Unexpected error fetching agents:', error);
     }
   };
 
   const handleAddAgent = async () => {
-    if (!user || !newAgentName.trim() || !newWebhookUrl.trim()) return;
+    if (!session?.user?.id || !newAgentName.trim() || !newWebhookUrl.trim()) {
+      alert('Please enter agent name and webhook URL.');
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('agents')
-        .insert([{ user_id: user.id, name: newAgentName, webhook_url: newWebhookUrl }]);
+        .insert([{ user_id: session.user.id, name: newAgentName, webhook_url: newWebhookUrl }])
+        .select()
+        .single();
+
       if (error) {
         console.error('Error adding agent:', error);
+        alert('Failed to add new agent.');
       } else {
+        setAgents([...agents, data]);
         setNewAgentName('');
         setNewWebhookUrl('');
-        fetchAgents();
       }
     } catch (error) {
-      console.error('Error adding agent:', error);
+      console.error('Unexpected error adding agent:', error);
+      alert('Unexpected error adding agent.');
     }
   };
 
   const handleDeleteAgent = async (agentId: string) => {
-    if (!user) return;
+    if (!session?.user?.id) return;
+    if (!window.confirm('Are you sure you want to delete this agent?')) {
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('agents')
         .delete()
         .eq('id', agentId)
-        .eq('user_id', user.id);
+        .eq('user_id', session.user.id);
+
       if (error) {
         console.error('Error deleting agent:', error);
+        alert('Failed to delete agent.');
       } else {
-        fetchAgents();
+        setAgents(agents.filter(agent => agent.id !== agentId));
       }
     } catch (error) {
-      console.error('Error deleting agent:', error);
+      console.error('Unexpected error deleting agent:', error);
+      alert('Unexpected error deleting agent.');
     }
   };
 
-  const handleStartEdit = (agent: any) => {
+  const handleEditAgent = (agent: Agent) => {
     setEditingAgentId(agent.id);
     setEditedAgentName(agent.name);
     setEditedWebhookUrl(agent.webhook_url);
   };
 
-  const handleCancelEdit = () => {
-    setEditingAgentId(null);
-    setEditedAgentName('');
-    setEditedWebhookUrl('');
-  };
+  const handleUpdateAgent = async () => {
+    if (!session?.user?.id || !editingAgentId || !editedAgentName.trim() || !editedWebhookUrl.trim()) {
+      alert('Please ensure all fields are filled.');
+      return;
+    }
 
-  const handleSaveEdit = async (agentId: string) => {
-    if (!user || !editedAgentName.trim() || !editedWebhookUrl.trim()) return;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('agents')
         .update({ name: editedAgentName, webhook_url: editedWebhookUrl })
-        .eq('id', agentId)
-        .eq('user_id', user.id);
+        .eq('id', editingAgentId)
+        .eq('user_id', session.user.id)
+        .select()
+        .single();
+
       if (error) {
         console.error('Error updating agent:', error);
+        alert('Failed to update agent.');
       } else {
+        setAgents(agents.map(agent => agent.id === editingAgentId ? data : agent));
         setEditingAgentId(null);
-        setEditedAgentName('');
-        setEditedWebhookUrl('');
-        fetchAgents();
       }
     } catch (error) {
-      console.error('Error updating agent:', error);
+      console.error('Unexpected error updating agent:', error);
+      alert('Unexpected error updating agent.');
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAgentId(null);
   };
 
 
   return (
-    <div className="container mx-auto px-4 pb-8">
-      <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg shadow-soft dark:shadow-soft-dark p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Settings</h2>
+    <div className="container mx-auto p-4 dark:bg-dark-bg dark:text-light-text transition-colors duration-300">
+      <div className="mb-6 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-md shadow-md border border-neutral-200 dark:border-neutral-700">
+        <h3 className="text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-100">My Agents</h3>
+        <div className="mb-3">
+          <div className="flex space-x-2 mb-2">
+            <input
+              type="text"
+              placeholder="Agent Name"
+              value={newAgentName}
+              onChange={(e) => setNewAgentName(e.target.value)}
+              className="border p-2 rounded-md w-1/2 dark:bg-neutral-700 dark:border-neutral-600 dark:text-neutral-100 text-neutral-900"
+            />
+            <input
+              type="text"
+              placeholder="Webhook URL"
+              value={newWebhookUrl}
+              onChange={(e) => setNewWebhookUrl(e.target.value)}
+              className="border p-2 rounded-md w-1/2 dark:bg-neutral-700 dark:border-neutral-600 dark:text-neutral-100 text-neutral-900"
+            />
+          </div>
           <button
-            onClick={signOut}
-            className="px-4 py-2 text-sm font-medium rounded-md text-neutral-900 dark:text-neutral-100 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            onClick={handleAddAgent}
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md text-light-text bg-primary-500 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 shadow-soft dark:shadow-soft-dark"
           >
-            Sign Out
+            <PlusCircle size={16} className="mr-2" />
+            Add Agent
           </button>
         </div>
 
-        <div className="mb-6">
-          <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-100 mb-2">My Agents</h3>
-          <div className="mb-4 p-4 bg-neutral-100 dark:bg-neutral-900 rounded-md border border-neutral-200 dark:border-neutral-700">
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label htmlFor="agentName" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Agent Name</label>
-                <input
-                  type="text"
-                  id="agentName"
-                  className="mt-1 block w-full rounded-md border-neutral-500 dark:border-neutral-500 shadow-sm sm:text-sm bg-transparent text-neutral-900 dark:text-neutral-100"
-                  placeholder="Enter agent name"
-                  value={newAgentName}
-                  onChange={(e) => setNewAgentName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="webhookUrl" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Webhook URL</label>
-                <input
-                  type="url"
-                  id="webhookUrl"
-                  className="mt-1 block w-full rounded-md border-neutral-500 dark:border-neutral-500 shadow-sm sm:text-sm bg-transparent text-neutral-900 dark:text-neutral-100"
-                  placeholder="Enter webhook URL"
-                  value={newWebhookUrl}
-                  onChange={(e) => setNewWebhookUrl(e.target.value)}
-                />
-              </div>
-            </div>
-            <button
-              onClick={handleAddAgent}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-light-text bg-primary-500 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              + Add Agent
-            </button>
-          </div>
-
-          {agents.length === 0 ? (
-            <div className="text-neutral-500 dark:text-neutral-400 mt-4">
-              <AlertCircle size={20} className="inline-block mr-1 align-text-top" />
-              No agents configured yet. Add your first agent.
-            </div>
-          ) : (
-            <ul className="mt-4 space-y-2">
-              {agents.map(agent => (
-                <li key={agent.id} className="bg-neutral-100 dark:bg-neutral-900 rounded-md p-4 border border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
-                  {editingAgentId === agent.id ? (
-                    <div className="grid grid-cols-2 gap-4 flex-1">
-                      <div>
-                        <label htmlFor={`agentName-${agent.id}`} className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Agent Name</label>
-                        <input
-                          type="text"
-                          id={`agentName-${agent.id}`}
-                          className="mt-1 block w-full rounded-md border-neutral-500 dark:border-neutral-500 shadow-sm sm:text-sm bg-transparent text-neutral-900 dark:text-neutral-100"
-                          value={editedAgentName}
-                          onChange={(e) => setEditedAgentName(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor={`webhookUrl-${agent.id}`} className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Webhook URL</label>
-                        <input
-                          type="url"
-                          id={`webhookUrl-${agent.id}`}
-                          className="mt-1 block w-full rounded-md border-neutral-500 dark:border-neutral-500 shadow-sm sm:text-sm bg-transparent text-neutral-900 dark:text-neutral-100"
-                          value={editedWebhookUrl}
-                          onChange={(e) => setEditedWebhookUrl(e.target.value)}
-                        />
-                      </div>
-                      <div className="col-span-2 flex justify-end mt-2">
-                        <button
-                          onClick={() => handleSaveEdit(agent.id)}
-                          className="px-3 py-2 text-sm font-medium rounded-md text-light-text bg-primary-500 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 mr-2"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="px-3 py-2 text-sm font-medium rounded-md text-neutral-900 dark:text-neutral-100 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">{agent.name}</p>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400 truncate">{agent.webhook_url}</p>
-                      </div>
-                      <div className="ml-4 flex-shrink-0 flex space-x-2">
-                        <button
-                          onClick={() => handleStartEdit(agent)}
-                          className="p-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                        >
-                          <Pencil size={16} className="text-neutral-700 dark:text-neutral-300" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAgent(agent.id)}
-                          className="p-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                        >
-                          <Trash2 size={16} className="text-red-500" />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-
+        <ul>
+          {agents.map(agent => (
+            <li key={agent.id} className="mb-2 p-3 bg-neutral-100 dark:bg-neutral-900 rounded-md border border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
+              {editingAgentId === agent.id ? (
+                <div className="flex flex-grow space-x-2">
+                  <input
+                    type="text"
+                    value={editedAgentName}
+                    onChange={(e) => setEditedAgentName(e.target.value)}
+                    placeholder="Agent Name"
+                    className="border p-2 rounded-md flex-grow dark:bg-neutral-700 dark:border-neutral-600 dark:text-neutral-100 text-neutral-900"
+                  />
+                  <input
+                    type="text"
+                    value={editedWebhookUrl}
+                    onChange={(e) => setEditedWebhookUrl(e.target.value)}
+                    placeholder="Webhook URL"
+                    className="border p-2 rounded-md flex-grow dark:bg-neutral-700 dark:border-neutral-600 dark:text-neutral-100 text-neutral-900"
+                  />
+                  <button onClick={handleUpdateAgent} className="px-3 py-2 bg-primary-500 text-light-text rounded-md hover:bg-primary-600 transition-colors duration-200">Save</button>
+                  <button onClick={handleCancelEdit} className="px-3 py-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 rounded-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors duration-200">Cancel</button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex-grow min-w-0">
+                    <h4 className="font-medium text-neutral-900 dark:text-neutral-100 truncate">{agent.name}</h4>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 truncate">{agent.webhook_url}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button onClick={() => handleEditAgent(agent)} className="p-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-md transition-colors duration-200">
+                      <Edit size={16} className="text-neutral-600 dark:text-neutral-400" />
+                    </button>
+                    <button onClick={() => handleDeleteAgent(agent.id)} className="p-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-md transition-colors duration-200">
+                      <Trash2 size={16} className="text-red-500" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
