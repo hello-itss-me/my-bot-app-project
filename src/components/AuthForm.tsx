@@ -5,7 +5,8 @@ export function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const { signIn, signUp, loading, error } = useAuthStore();
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false); // New state for verification message
+  const { signUp, signIn, loading, error } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -13,6 +14,7 @@ export function AuthForm() {
     try {
       if (isSignUp) {
         await signUp(email, password);
+        setShowVerificationMessage(true); // Show verification message after signup
       } else {
         await signIn(email, password);
       }
@@ -76,6 +78,12 @@ export function AuthForm() {
             {loading ? 'Processing...' : isSignUp ? 'Sign up' : 'Sign in'}
           </button>
         </div>
+
+        {showVerificationMessage && isSignUp && ( // Conditionally render verification message
+          <div className="text-green-500 text-sm mt-2 text-center">
+            Please check your email to verify your account.
+          </div>
+        )}
 
         <div className="text-sm text-center">
           <button
