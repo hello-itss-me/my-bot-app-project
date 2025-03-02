@@ -24,12 +24,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: async () => {
     try {
       set({ loading: true });
-      
+
       // Get session data
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (session) {
-        set({ 
+        set({
           user: session.user,
           session,
         });
@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Listen for auth changes
       const { data: { subscription } } = await supabase.auth.onAuthStateChange(
         (_event, session) => {
-          set({ 
+          set({
             user: session?.user || null,
             session: session || null,
           });
@@ -46,7 +46,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       );
 
       set({ initialized: true });
-      
+
       return () => subscription.unsubscribe();
     } catch (error) {
       set({ error: (error as Error).message });
@@ -58,12 +58,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: async (email, password) => {
     try {
       set({ loading: true, error: null });
-      
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: { // Добавляем options
+          emailRedirectTo: `${window.location.origin}/login`, //  URL для редиректа после подтверждения
+        }
       });
-      
+
       if (error) throw error;
     } catch (error) {
       set({ error: (error as Error).message });
@@ -76,12 +79,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   signIn: async (email, password) => {
     try {
       set({ loading: true, error: null });
-      
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
+
       if (error) throw error;
     } catch (error) {
       set({ error: (error as Error).message });
@@ -94,11 +97,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   signOut: async () => {
     try {
       set({ loading: true, error: null });
-      
+
       const { error } = await supabase.auth.signOut();
-      
+
       if (error) throw error;
-      
+
       set({ user: null, session: null });
     } catch (error) {
       set({ error: (error as Error).message });
