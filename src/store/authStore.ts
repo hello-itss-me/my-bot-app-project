@@ -59,15 +59,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       set({ loading: true, error: null });
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { // Добавляем options
-          emailRedirectTo: `${window.location.origin}/login`, //  URL для редиректа после подтверждения
-        }
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`,
+        },
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        // Пользователь создан, но email не верифицирован.
+        // Не нужно ничего делать, ожидаем верификацию.
+      }
     } catch (error) {
       set({ error: (error as Error).message });
       throw error;
