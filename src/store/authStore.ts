@@ -67,6 +67,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         },
       });
 
+      console.log('Signup Data:', data); // Добавлено логирование данных
+      console.log('Signup Error:', error); // Добавлено логирование ошибок
+
       if (error) {
         throw error;
       }
