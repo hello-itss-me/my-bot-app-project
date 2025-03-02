@@ -62,9 +62,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/login`,
-        },
+        // options: { // Убираем опцию emailRedirectTo
+        //   emailRedirectTo: `${window.location.origin}/login`,
+        // },
       });
 
       console.log('Signup Data:', data); // Добавлено логирование данных
