@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../store/chatStore';
-import { Send, AlertCircle } from 'lucide-react';
+import { Send, AlertCircle, Copy } from 'lucide-react'; // Import Copy icon
 
 export function ChatInterface() {
   const [message, setMessage] = useState('');
@@ -34,6 +34,17 @@ export function ChatInterface() {
     const agentId = e.target.value || null;
     setCurrentChatAgent(agentId);
   };
+
+  const handleCopyMessage = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('Message copied to clipboard!'); // Optional: provide user feedback
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      alert('Failed to copy message to clipboard.');
+    }
+  };
+
 
   if (!currentChat) {
     return (
@@ -89,16 +100,25 @@ export function ChatInterface() {
               key={msg.id}
               className={`flex ${
                 msg.sender_type === 'user' ? 'justify-end' : 'justify-start'
-              }`}
+              } relative`} // Added relative for positioning
             >
-              <div
-                className={`max-w-[70%] rounded-xl px-4 py-2 shadow-soft dark:shadow-soft-dark ${
-                  msg.sender_type === 'user'
-                    ? 'bg-primary-700 text-light-text'
-                    : 'bg-neutral-100 dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100'
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+              <div className="flex items-center"> {/* Flex container for message and copy icon */}
+                <div
+                  className={`max-w-[70%] rounded-xl px-4 py-2 shadow-soft dark:shadow-soft-dark ${
+                    msg.sender_type === 'user'
+                      ? 'bg-primary-700 text-light-text'
+                      : 'bg-neutral-100 dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                </div>
+                <button
+                  onClick={() => handleCopyMessage(msg.content)}
+                  className="ml-2 p-1 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors duration-200" // Added button for copy icon
+                  aria-label="Copy message"
+                >
+                  <Copy size={16} className="text-neutral-500 dark:text-neutral-400" />
+                </button>
               </div>
             </div>
           ))
