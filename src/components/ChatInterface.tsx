@@ -46,7 +46,8 @@ export function ChatInterface() {
     }
   };
 
-  const toggleExpand = () => {
+  const toggleExpand = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault(); // Prevent form submission
     setIsExpanded(!isExpanded);
   };
 
