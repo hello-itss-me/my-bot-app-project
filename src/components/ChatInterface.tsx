@@ -151,8 +151,8 @@ export function ChatInterface() {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type a message..."
-              className={`w-full rounded-md resize-none bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 outline-none p-3 rounded-md transition-height duration-200 ${isExpanded ? 'rows-6' : 'rows-1'}`}
-              rows={1}
+              className={`w-full rounded-md resize-none bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 outline-none p-3 rounded-md transition-height duration-200 ${isExpanded ? 'rows-15' : 'rows-1'}`}
+              rows={isExpanded ? 15 : 1}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
