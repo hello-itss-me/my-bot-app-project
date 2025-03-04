@@ -273,21 +273,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
               user.id,
               agent.webhook_url
             );
+            console.log('Agent response received and parsed:', agentResponse); // Added log
+            console.log('Full agentResponse object:', agentResponse); // ADDED LOGGING HERE - Inspect the entire object
+
 
             // Add agent response to the database
             const agentMessage = {
               chat_id: currentChat.id,
               user_id: null,
               sender_type: 'agent' as const,
-              content: agentResponse?.response || 'No response from agent', // Use actual response here
+              content: agentResponse?.[0]?.message?.content || 'No response from agent', // Use actual response here
             };
 
             await supabase
               .from('messages')
               .insert(agentMessage);
+            console.log('Agent message inserted into DB. About to refresh messages.'); // Added log
+
 
             // Refresh messages
             await get().fetchMessages(currentChat.id);
+            console.log('Messages refreshed. Current messages state:', get().messages); // Added log
             set({ isTyping: false });
 
 
