@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../store/chatStore';
-import { Send, AlertCircle, Copy } from 'lucide-react'; // Import Copy icon
+import { Send, AlertCircle, Copy, Expand, Minimize } from 'lucide-react'; // Import Expand and Minimize icons
 
 export function ChatInterface() {
   const [message, setMessage] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false); // State for textarea expansion
   const { currentChat, messages, agents, isTyping, sendMessage, fetchAgents, setCurrentChatAgent } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +44,10 @@ export function ChatInterface() {
       console.error('Failed to copy text: ', err);
       alert('Failed to copy message to clipboard.');
     }
+  };
+
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
   };
 
 
@@ -140,20 +145,30 @@ export function ChatInterface() {
       </div>
 
       <div className="border-t border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50 dark:bg-neutral-800">
-        <form onSubmit={handleSendMessage} className="flex items-center">
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 rounded-md resize-none bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 outline-none p-3 rounded-md"
-            rows={1}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage(e);
-              }
-            }}
-          />
+        <form onSubmit={handleSendMessage} className="flex items-center relative">
+          <div className="flex-1 relative">
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type a message..."
+              className={`w-full rounded-md resize-none bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 outline-none p-3 rounded-md transition-height duration-200 ${isExpanded ? 'rows-6' : 'rows-1'}`}
+              rows={1}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(e);
+                }
+              }}
+            />
+            <button
+              onClick={toggleExpand}
+              className="absolute bottom-1 right-[1.2rem] p-1 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors duration-200"
+              aria-label="Expand input"
+              style={{ bottom: '0.5rem' }}
+            >
+              {isExpanded ? <Minimize size={16} className="text-neutral-500 dark:text-neutral-400" /> : <Expand size={16} className="text-neutral-500 dark:text-neutral-400" />}
+            </button>
+          </div>
           <button
             type="submit"
             disabled={!message.trim() || !currentChat.agent_id}
