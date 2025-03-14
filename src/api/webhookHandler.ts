@@ -66,7 +66,7 @@ export async function sendMessageToAgent(message: string, chatId: string, userId
 
     // Add a timeout to the fetch request
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout - increased from 30 seconds
 
     console.log('Before fetch - about to call fetch');
     console.log('Webhook URL:', webhookUrl);
